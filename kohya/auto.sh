@@ -1,53 +1,28 @@
 #!/bin/bash
 
-train_data_dirs=(
-"/root/data/Genshin/八重"
-"/root/data/Genshin/丽莎"
-"/root/data/Genshin/夜兰"    
-"/root/data/Genshin/胡桃"    
-"/root/data/Genshin/申鹤"
-"/root/data/Genshin/八重"
-"/root/data/Genshin/九条"
-"/root/data/Genshin/夜兰"    
-"/root/data/Genshin/胡桃"    
-"/root/data/Genshin/申鹤"                 
-
-)
-
-output_dirs=(
-"/root/stable-diffusion-webui/models/Lora/八重"    
-"/root/stable-diffusion-webui/models/Lora/丽莎"    
-"/root/stable-diffusion-webui/models/Lora/夜兰"    
-"/root/stable-diffusion-webui/models/Lora/胡桃"    
-"/root/stable-diffusion-webui/models/Lora/申鹤" 
-"/root/stable-diffusion-webui/models/Lora/八重"    
-"/root/stable-diffusion-webui/models/Lora/丽莎"    
-"/root/stable-diffusion-webui/models/Lora/夜兰"    
-"/root/stable-diffusion-webui/models/Lora/胡桃"    
-"/root/stable-diffusion-webui/models/Lora/申鹤"      
-
-)
-
-output_names=(
-"八重"    
-"丽莎" 
-"夜兰"    
-"胡桃"    
+characters=(
+"安柏"
+"七七"
+"夜兰"
+"胡桃"
 "申鹤"
-"八重"    
-"丽莎" 
-"夜兰"    
-"胡桃"    
-"申鹤"           
+"九条"
+"琴"
+"迪希雅"
+"诺艾尔"
 )
 
-for ((i=0; i<${#train_data_dirs[@]}; i++))
+for character in "${characters[@]}"
 do
+    train_data_dir="/root/data/Genshin/$character"
+    output_dir="/root/stable-diffusion-webui/models/Lora/$character"
+    output_name="$character"
+
     accelerate launch --num_cpu_threads_per_process=2 "./sdxl_train_network.py" \
     --pretrained_model_name_or_path="/root/ckpts/sd_xl_base_1.0.safetensors" \
-    --train_data_dir="${train_data_dirs[i]}" \
+    --train_data_dir="$train_data_dir" \
     --resolution="1024,1024" \
-    --output_dir="${output_dirs[i]}" \
+    --output_dir="$output_dir" \
     --logging_dir="/root/windsing/logs" \
     --network_alpha="2" \
     --training_comment="by chenkin" \
@@ -56,13 +31,13 @@ do
     --text_encoder_lr=0.0002 \
     --unet_lr=0.0002 \
     --network_dim=4 \
-    --output_name="${output_names[i]}" \
+    --output_name="$output_name" \
     --lr_scheduler_num_cycles="10" \
     --no_half_vae \
     --learning_rate="0.0002" \
     --lr_scheduler="constant" \
     --train_batch_size="10" \
-    --save_every_n_epochs="5" \
+    --save_every_n_epochs="10" \
     --mixed_precision="fp16" \
     --save_precision="fp16" \
     --seed="12345" \
