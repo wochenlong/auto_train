@@ -41,7 +41,8 @@ for character in characters:
         FilterSimilarAction("all"),  # 再次丢弃相似或重复的图像
         FirstNSelectAction(50),  # 当已有200张图像到达此步骤时，停止后继图像处理
         # MirrorAction(),  # 可选，镜像处理图像进行数据增强
-        RandomFilenameAction(ext='.webp', quality=90),  # 随机重命名图像，按webp 90% 的质量保存
+        RandomFilenameAction(),  # 随机重命名图像
+        FileExtAction(ext='.webp', quality=90)  # 按webp 90% 的质量保存
     ).export(
         # 保存到/data/surtr_dataset目录，可自行更改
         TextualInversionExporter(output_dir)
