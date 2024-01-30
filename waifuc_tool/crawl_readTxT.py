@@ -9,7 +9,7 @@ output_path = r"/root/data/a3"
 character_path = r"/root/waifuc/name.csv"
 
 # 读取角色列表
-df = pd.read_csv(character_path, header=None)
+df = pd.read_csv(character_path, header=None, comment='#')
 characters = df.values.tolist()
 
 # 遍历角色列表,使用waifuc进行爬取
