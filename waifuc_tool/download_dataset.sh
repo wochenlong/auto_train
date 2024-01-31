@@ -9,7 +9,7 @@ do
     wget "https://huggingface.co/datasets/CyberHarem/${role}_touhou/resolve/main/dataset-1200.zip" -P "/root/autodl-tmp/dongfang"
 
     # 解压文件
-    unzip "/root/autodl-tmp/dongfang/dataset-1200.zip" -d "/root/autodl-tmp/dongfang/${role}_marisa_touhou"
+    unzip "/root/autodl-tmp/dongfang/dataset-1200.zip" -d "/root/autodl-tmp/dongfang/${role}_touhou"
 
     # 删除压缩文件
     rm "/root/autodl-tmp/dongfang/dataset-1200.zip"
