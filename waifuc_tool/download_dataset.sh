@@ -14,7 +14,7 @@ do
         failed_downloads+=("${role}")
     else
         # 解压文件
-        unzip "/root/autodl-tmp/dongfang2/dataset-1200.zip" -d "/root/autodl-tmp/dongfang2/${role}_touhou"
+        unzip "/root/autodl-tmp/dongfang2/dataset-1200.zip" -d "/root/autodl-tmp/dongfang2/${role}"
 
         # 删除压缩文件
         rm "/root/autodl-tmp/dongfang2/dataset-1200.zip"
