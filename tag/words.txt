@@ -1,0 +1,8 @@
+hair
+ears
+eyes
+bangs
+wear
+wears
+tail
+tails
