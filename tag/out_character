@@ -1,0 +1,39 @@
+import os
+import re
+from tqdm import tqdm
+# 设置工作目录为您存放txt文件的目录
+work_dir = 'path_to_your_directory'  # 请替换为您的目录路径
+def process_file(file_path):
+    # 读取文件内容
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    
+    # 处理每一行
+    processed_lines = []
+    for line in lines:
+        # 按,分割内容
+        split_content = [x.strip() for x in line.split(',')]
+        # 去除重复内容
+        unique_content = list(set(split_content))
+        # 正则匹配结尾为hair/eyes/bangs/horn的内容并删除
+        pattern = re.compile(r'(.*?)(hair|eyes|bangs|horns)$', re.IGNORECASE)
+        filtered_content = [x for x in unique_content if not pattern.search(x)]
+        # 组合成以", "分割的内容
+        processed_line = ', '.join(filtered_content)
+        processed_lines.append(processed_line)
+    
+    return processed_lines
+# 遍历目录及其子目录中的所有文件，并使用tqdm显示进度
+for root, dirs, files in os.walk(work_dir):
+    for filename in tqdm(files, desc="Processing files"):
+        if filename.endswith('.txt'):
+            file_path = os.path.join(root, filename)
+            processed_lines = process_file(file_path)
+            
+            # 重命名原文件为.bak文件
+            bak_file_path = file_path + '.bak'
+            os.rename(file_path, bak_file_path)
+            
+            # 创建新文件来保存处理后的内容
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.writelines(processed_lines)
