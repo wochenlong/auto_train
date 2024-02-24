@@ -22,7 +22,7 @@ for character in characters:
     tag = "_".join(tag.strip().split(" "))
 
     # 通过gchar扩展包提供的数据源进行爬取
-    s = GelbooruSource([tag])
+    s = DanbooruSource([tag, "solo"])
     # 爬取图像，处理它们，然后以给定的格式保存到目录中
     s.attach(
         # 以RGB色彩模式加载图像并将透明背景替换为白色背景
