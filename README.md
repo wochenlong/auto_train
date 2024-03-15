@@ -13,3 +13,7 @@ pip install tqdm
 pip install pandas
 pip install sdeval       # 这个应该包含了fidelity, controllability, corrupt子模块
 ```
+## 运行sdeval
+```
+python  eval_lora.py
+```
