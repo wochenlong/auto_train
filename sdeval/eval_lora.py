@@ -15,7 +15,7 @@ from sdeval.controllability import BikiniPlusMetrics
 from sdeval.corrupt import AICorruptMetrics
 import os
 
-os.environ["onnx_mode"] = "cpu"
+#os.environ["onnx_mode"] = "cpu"
 #os.environ["https_proxy"] = "http://192.168.1.100:7890"
 
 
