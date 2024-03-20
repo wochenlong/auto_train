@@ -17,3 +17,15 @@ pip install sdeval       # 这个应该包含了fidelity, controllability, corru
 ```
 python  eval_lora.py
 ```
+## 在autodl上运行运行sdeval
+
+```
+pip install openpyxl
+```
+
+
+```
+HF_ENDPOINT=https://hf-mirror.com python eval_lora.py
+```
+
+xlsl 文件保存在python的实际运行目录
