@@ -1,71 +1,83 @@
-import sys
-import uuid
-import os
-import random
+import os,json,re
 from PIL import Image, PngImagePlugin
 from tqdm import tqdm
-
-# 导入webuiapi模块
 import webuiapi
 
-# 初始化WebUIApi对象，指定服务器地址、端口、采样器和步数
-api = webuiapi.WebUIApi(host="127.0.0.1", port=6006, sampler="DPM++ 2M Karras", steps=20)
+def safetensors_metadata_parser(file_path):
+    header_size = 8
+    meta_data = {}
+    if os.stat(file_path).st_size > header_size:
+        with open(file_path, "rb") as f:
+            b8 = f.read(header_size)
+            if len(b8) == header_size:
+                header_len = int.from_bytes(b8, 'little', signed=False)
+                headers = f.read(header_len)
+                if len(headers) == header_len:
+                    meta_data = sorted(json.loads(headers.decode("utf-8")).get("__metadata__", meta_data).items())
+    return meta_data
 
-# 指定路径
-parent_folder = "/root/autodl-tmp/genshin124/genshin_nohair"
-output_folder = "/root/sdwebuiapi/imgs"
-num_images_per_folder = 2  # 每个文件夹要生成的图片数量
+blacklist = ["solo", "looking_at_viewer", "blush", "simple_background", "white_background", "smile", "open_mouth","highres","commentary_request","absurdres","closed_mouth","cowboy_shot","upper_body",'artist_name']  # 黑名单列表
 
-# 获取所有子文件夹
-subfolders = [folder for folder in os.listdir(parent_folder) if os.path.isdir(os.path.join(parent_folder, folder))]
+def get_keywords(safetensors_file,top_20=True):
+    metadatas = safetensors_metadata_parser(safetensors_file)
+    _dict = {}
+    for a,b in metadatas:
+        if a == "ss_tag_frequency":
+            tags = b
+            #转化为json
+            try:
+                json_obj = json.loads(tags)
+            except json.JSONDecodeError as e:
+                print(f"Error parsing JSON: {e}")
+                return
+            for key, value in json_obj.items():
+                #key等于第一个_之后的内容，通过re获得
+                key = re.search(r"_(.*)", key).group(1)
+                max_value = max(value.values())
+                value_white = {zi: zi_value for zi, zi_value in value.items() if zi not in blacklist}
+                for zi, zi_value in value_white.items():
+                    keywords = []
+                    if top_20:
+                        # 获取最高value的前20个结果
+                        keywords = [zi for zi, zi_value in sorted(value_white.items(), key=lambda item: item[1], reverse=True)[:20]]
+                    else:
+                        if zi_value / max_value > 0.5:
+                            keywords.append(zi)
+                _dict[key] = keywords
+            return _dict
 
-# 显示进度条
-progress_bar = tqdm(total=len(subfolders) * num_images_per_folder, desc="Generating Images")
-
-for subfolder in subfolders:
-    # 子文件夹路径
-    subfolder_path = os.path.join(parent_folder, subfolder)
-
-    # 获取路径下所有的txt文件
-    txt_files = [os.path.join(subfolder_path, file) for file in os.listdir(subfolder_path) if file.endswith(".txt")]
-
-    # 随机选择指定数量的txt文件
-    random_txt_files = random.sample(txt_files, num_images_per_folder)
-
-    for txt_file in random_txt_files:
-        # 读取txt文件内容作为prompt参数
-        with open(txt_file, "r") as f:
-            prompt = f.read().strip()
-
-        lora = ",<lora:genshin_pony_v2:1>"
+def main(lora_file):
+    # 初始化WebUIApi对象，指定服务器地址、端口、采样器和步数
+    api = webuiapi.WebUIApi(host="127.0.0.1", port=6006, sampler="DPM++ 2M Karras", steps=20)
+    # 指定路径和文件名
+    output_folder = "/root/autodl-tmp/current/img2"
+    keywords=get_keywords(lora_file)
+    # 显示进度条
+    progress_bar = tqdm(total=len(keywords), desc="Generating Images")
+    for character, keywords_list in keywords.items():
+        # 提取关键词作为 prompt,使用“, ”隔开列表
+        prompt = ", ".join(keywords_list)
+        lora_name = os.path.basename(lora_file)
+        lora_name = os.path.splitext(lora_name)[0]  # 去掉后缀名
+        lora = f", <lora:{lora_name}:1>"
         # 调用api的txt2img方法
         result = api.txt2img(
-            prompt=prompt + lora,
-            negative_prompt="wings, nsfw, low quality, worst quality, normal quality,",
+            prompt="score_9,,"+prompt + lora,
+            negative_prompt=" nsfw, low quality, worst quality, normal quality,",
             seed=-1,
             cfg_scale=7,
             width=1024,
             height=1024,
         )
-
-        # 获取文件夹名作为文件名
-        folder_name = os.path.basename(subfolder_path)
-        # 构建保存路径
-        output_path = os.path.join(output_folder, f"{folder_name}.png")
-
-        # 首先，复制图像，以避免在原始图像上进行更改
+        output_path = os.path.join(output_folder, f"{character}.png")
         img_copy = result.image.copy()
-
-        # 创建一个新的meta对象，将参数作为文本添加到meta中
         meta = PngImagePlugin.PngInfo()
         parameters = f"{result.info['infotexts'][0]}"
         meta.add_text("parameters", parameters)
-
-        # 将图像保存为PNG格式，并将信息作为文本区块添加
         img_copy.save(output_path, format="PNG", pnginfo=meta)
-
-        # 更新进度条
         progress_bar.update(1)
+    progress_bar.close()
+    print(f"Generation completed. Images saved in {output_folder}")
 
-progress_bar.close()
-print(f"Generation completed. Images saved in {output_folder}")
+lora_file = r"/root/autodl-tmp/stable-diffusion-webui/models/Lora/genshin_pony_v2/genshin_pony_v2.safetensors"
+main(lora_file)
