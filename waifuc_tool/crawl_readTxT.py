@@ -4,10 +4,14 @@ from waifuc.export import *
 from waifuc.source import *
 import pandas as pd
 from subprocess import run
+from datetime import datetime
 
 # 请将以下路径替换为自己的路径
 output_path = r"E:\data\角色\ALL\blue_archive_0407"
 character_path = r"E:\waifuc\auto_train\waifuc_tool\碧蓝档案.csv"
+
+# 目标图片张数
+target_num = 200
 
 # 读取角色列表
 df = pd.read_csv(character_path, header=None, comment='#')
@@ -64,4 +68,11 @@ for character in characters:
         # 保存到/data/surtr_dataset目录，可自行更改
          TextualInversionExporter(output_dir)
     )
+
+    # 记录图像不足目标张数的角色，放在日志文件中，日志文件名为时间戳
+    if len(os.listdir(output_dir)) < target_num:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        with open(f"log_{timestamp}.txt", "a") as f:
+            f.write(f"{tag}: {len(os.listdir(output_dir))} images\n")
+
     run(["python", r"E:\waifuc\tag.py", output_dir])
