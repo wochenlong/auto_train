@@ -20,6 +20,13 @@ for character in characters:
     output_dir = f'1_{tag}'
     output_dir = os.path.join(output_path, output_dir)
 
+    # 如果输出目录不存在则创建，存在且包含文件则跳过
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    else:
+        if len(os.listdir(output_dir)) > 0:
+            continue
+
     tag = "_".join(tag.strip().split(" "))                       
                                           
     # 通过gchar扩展包提供的数据源进行爬取
