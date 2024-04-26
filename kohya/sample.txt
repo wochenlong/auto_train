@@ -1,0 +1,1 @@
+1girl  --n low quality, worst quality, bad anatomy,bad composition, poor, low effort --w 1024 --h 1024 --d 1 --l 7.5 --s 28
