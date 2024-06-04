@@ -30,7 +30,9 @@ HF_ENDPOINT=https://hf-mirror.com python eval_lora.py
 
 xlsl 文件保存在python的实际运行目录
 
-# 指定目录中的每个子文件夹中随机抽取50张webp图片和同名的txt文件，并将它们复制到指定的目标文件夹中。
+# 继续训练的脚本
+
+指定目录中的每个子文件夹中随机抽取50张webp图片和同名的txt文件，并将它们复制到指定的目标文件夹中。
 ```
 import os
 import shutil
