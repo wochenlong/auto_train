@@ -1,0 +1,128 @@
+import os
+from PIL import PngImagePlugin, Image
+from collections import Counter
+import webuiapi
+from sdeval.fidelity import CCIPMetrics
+from imgutils.metrics import ccip_extract_feature, ccip_default_threshold, ccip_batch_differences
+from typing import List, Optional
+from sdeval.utils import load_images, ImagesTyping, tqdm
+import warnings
+import numpy as np
+
+_DEFAULT_CCIP_MODEL = 'ccip-caformer-24-randaug-pruned'
+
+def gen_test_image(api, prompt: str, neg_prompts: str, seed: int, save_file_dir: str, save_file_name: str, bs=4):
+    try:
+        result = api.txt2img(
+            prompt=prompt,
+            negative_prompt=neg_prompts,
+            seed=seed,
+            cfg_scale=5,
+            steps=24,
+            batch_size=bs,
+            width=832,
+            height=1088,
+            sampler_name="Euler a"
+        )
+        for i in range(bs):
+            pnginfo = PngImagePlugin.PngInfo()
+            pnginfo.add_text("parameters", result.info['infotexts'][i])
+            seed = result.info['all_seeds'][i]
+            save_file_path = os.path.join(save_file_dir, f'{save_file_name}-{seed}.png')
+            result.images[i].save(save_file_path, "PNG", pnginfo=pnginfo)
+    except Exception as e:
+        print(f"Error generating or saving images: {e}")
+
+class CCIPMetrics_fix(CCIPMetrics):
+    def __init__(self, images: ImagesTyping, feats: Optional[np.ndarray] = None, max_eval_source_num: int = 1000, model: str = _DEFAULT_CCIP_MODEL, threshold: Optional[float] = None, silent: bool = False, tqdm_desc: str = None):
+        self.silent = silent
+        self.tqdm_desc = tqdm_desc or self.__class__.__name__
+        self._ccip_model = model
+        self._threshold = ccip_default_threshold(self._ccip_model) if threshold is None else threshold
+
+        if feats is None:
+            try:
+                image_list: List[Image.Image] = load_images(images)
+                image_list = image_list[:max_eval_source_num]
+                if not image_list:
+                    raise FileNotFoundError(f'Images for initializing CCIP metrics not provided - {images}.')
+                self._features = [
+                    ccip_extract_feature(img, model=self._ccip_model)
+                    for img in tqdm(image_list, silent=self.silent, desc=f'{self.tqdm_desc} Initializing')
+                ]
+            except Exception as e:
+                print(f"Error loading or processing images: {e}")
+                self._features = []
+        else:
+            if images:
+                warnings.warn(f'Binary features assigned, images {images!r} will be ignored.')
+            if len(feats.shape) != 2 or feats.shape[-1] != 768:
+                raise ValueError(f'Feature shape should be (B, 768), but {feats.shape!r} found actually.')
+            self._features = list(feats)
+
+class eval_someone():
+    def __init__(self, name: str, lora_train_dir: str, trigger_dir: str, core_tag_rate=0.9):
+        self.name = name
+        self.lora_train_dir = lora_train_dir
+        self.trigger_dir = trigger_dir
+        self.core_tag_rate = core_tag_rate
+        self.get_core_tag()
+
+        os.makedirs(self.trigger_dir, exist_ok=True)
+
+    def get_core_tag(self):
+        self.lora_test_tags = []
+        for root, dirs, files in os.walk(self.lora_train_dir):
+            for filename in files:
+                if filename.endswith(".txt"):
+                    file_path = os.path.join(root, filename)
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as file:
+                            self.lora_test_tags.append(file.read().replace("\\", ""))
+                    except Exception as e:
+                        print(f"Error reading file {file_path}: {e}")
+
+        self.text_file_count = len(self.lora_test_tags)
+        all_txt_contents_list = [x.strip() for x in ",".join(self.lora_test_tags).split(",")]
+        self.lora_tags_count = Counter(all_txt_contents_list)
+        self.trigger_word = []
+        for key in self.lora_tags_count.keys():
+            if self.lora_tags_count[key] >= self.core_tag_rate * self.text_file_count and key not in ['']:
+                self.trigger_word.append(key.replace("_", " "))
+        print("核心关键字为：", self.trigger_word)
+
+    def gen_image(self, api, base_prompt="", suffix_prompt="", base_neg_negative_prompt="score_4, score_5, score_6,realbooru, realistic, photorealistic, source_pony, source_furry, monochrome, rough sketch, fewer digits, extra digits, signature, artist name"):
+        prompts = base_prompt + ",".join(self.trigger_word) + suffix_prompt
+        neg_prompts = base_neg_negative_prompt
+        gen_test_image(api=api, prompt=prompts, neg_prompts=neg_prompts, seed=128, save_file_dir=self.trigger_dir, save_file_name=self.name, bs=4)
+
+    def eval_ccip(self):
+        try:
+            ccip = CCIPMetrics_fix(images=self.lora_train_dir)
+            ccip_score = ccip.score(self.trigger_dir)
+            return ccip_score
+        except Exception as e:
+            print(f"Error during CCIP evaluation: {e}")
+            return None
+
+# os.environ['https_proxy'] = '127.0.0.1:107'
+api = webuiapi.WebUIApi(host='127.0.0.1', port=6006)
+
+def main():
+    try:
+        one_char = eval_someone(
+            name='agnes_tachyon_(umamusume)',
+            lora_train_dir=r"/root/autodl-tmp/pony/umamusume/1_ agnes_tachyon_(umamusume)",
+            trigger_dir=r"/root/autodl-tmp/ccip/agnes_tachyon_(umamusume)"
+        )
+        one_char.gen_image(api=api, base_prompt="<lora:fumamusume_all:1>,", suffix_prompt="", base_neg_negative_prompt="")
+        score = one_char.eval_ccip()
+        if score is not None:
+            print(f"CCIP Score: {score}")
+        else:
+            print("Failed to calculate CCIP score.")
+    except Exception as e:
+        print(f"Error in main function: {e}")
+
+if __name__ == "__main__":
+    main()
