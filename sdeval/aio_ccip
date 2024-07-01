@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from PIL import PngImagePlugin, Image
 from collections import Counter
 import webuiapi
@@ -10,6 +11,8 @@ import warnings
 import numpy as np
 
 _DEFAULT_CCIP_MODEL = 'ccip-caformer-24-randaug-pruned'
+ccip_score_dir = "/root/autodl-tmp/ccip_score"
+os.makedirs(ccip_score_dir, exist_ok=True)
 
 def gen_test_image(api, prompt: str, neg_prompts: str, seed: int, save_file_dir: str, save_file_name: str, bs=4):
     try:
@@ -87,7 +90,7 @@ class eval_someone():
         self.lora_tags_count = Counter(all_txt_contents_list)
         self.trigger_word = []
         for key in self.lora_tags_count.keys():
-            if self.lora_tags_count[key] >= self.core_tag_rate * self.text_file_count and key not in ['']:
+            if (self.lora_tags_count[key] >= self.core_tag_rate * self.text_file_count or key.startswith('character:')) and key not in ['']:
                 self.trigger_word.append(key.replace("_", " "))
         print("核心关键字为：", self.trigger_word)
 
@@ -105,22 +108,60 @@ class eval_someone():
             print(f"Error during CCIP evaluation: {e}")
             return None
 
+def determine_fidelity(score):
+    if score < 0.5:
+        return "Not Restored"
+    elif score < 0.9:
+        return "Barely Restored"
+    elif score < 0.95:
+        return "Restored"
+    else:
+        return "Highly Restored"
+
 # os.environ['https_proxy'] = '127.0.0.1:107'
 api = webuiapi.WebUIApi(host='127.0.0.1', port=6006)
 
 def main():
+    base_dir = "/root/autodl-tmp/pony/princess_connect"
+    scores = []
+    subdirs = [subdir for subdir in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, subdir))]
+    total_dirs = len(subdirs)
+    
     try:
-        one_char = eval_someone(
-            name='agnes_tachyon_(umamusume)',
-            lora_train_dir=r"/root/autodl-tmp/pony/umamusume/1_ agnes_tachyon_(umamusume)",
-            trigger_dir=r"/root/autodl-tmp/ccip/agnes_tachyon_(umamusume)"
-        )
-        one_char.gen_image(api=api, base_prompt="<lora:fumamusume_all:1>,", suffix_prompt="", base_neg_negative_prompt="")
-        score = one_char.eval_ccip()
-        if score is not None:
-            print(f"CCIP Score: {score}")
-        else:
-            print("Failed to calculate CCIP score.")
+        for idx, subdir in enumerate(subdirs, start=1):
+            lora_train_dir = os.path.join(base_dir, subdir)
+            trigger_dir = os.path.join("/root/autodl-tmp/princess_connect_ccip", subdir)
+            # Remove any leading digit and replace underscore with space
+            name = ''.join(filter(lambda x: not x.isdigit(), subdir)).replace("_", " ").strip()
+            one_char = eval_someone(
+                name=name,
+                lora_train_dir=lora_train_dir,
+                trigger_dir=trigger_dir
+            )
+            one_char.gen_image(api=api, base_prompt="<lora:princess_connect:1>,", suffix_prompt="", base_neg_negative_prompt="")
+            score = one_char.eval_ccip()
+            if score is not None:
+                fidelity = determine_fidelity(score)
+                print(f"CCIP Score for {name}: {score}")
+                scores.append({
+                    'name': name,
+                    'trigger_word': ",".join(one_char.trigger_word),
+                    'CCIP Score': score,
+                    'Restoration Level': fidelity
+                })
+            else:
+                print(f"Failed to calculate CCIP score for {name}.")
+                scores.append({
+                    'name': name,
+                    'trigger_word': ",".join(one_char.trigger_word),
+                    'CCIP Score': 'Failed',
+                    'Restoration Level': 'Failed'
+                })
+            # Output progress
+            print(f"Processed {idx}/{total_dirs} folders.")
+        df = pd.DataFrame(scores)
+        df = df.sort_values(by='CCIP Score', ascending=False, key=lambda col: pd.to_numeric(col, errors='coerce'))
+        df.to_csv(os.path.join(ccip_score_dir, 'princess_connect_ccip_scores.csv'), index=False)
     except Exception as e:
         print(f"Error in main function: {e}")
 
