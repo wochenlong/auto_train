@@ -3,19 +3,19 @@ import re
 from collections import Counter
 
 directory = r"F:\data\all\touhou\touhou_146\touhou_145"  # 指定目录路径
-blacklist = ["solo", "looking_at_viewer", "blush", "simple_background", "white_background", "smile", "mouth","holding" ,"request","fruit" ,"food","highres","absurdres"]  # 黑名单列表
+blacklist = ["solo", "looking_at_viewer","background","ID","blush", "smile", "mouth", "holding", "request", "fruit", "food", "highres", "absurdres"]  # 黑名单列表
 
 output_file_path = r"F:\data\all\touhou\touhou_146\touhou_145\result_5.txt"  # 指定输出结果的txt文件路径
 
 # 定义标签分类
 def categorize_word(word):
-    if any(tag in word for tag in ["hair", "bangs", "twintails","pantyhose","braid","side_up","bun"]):
+    if any(tag in word for tag in ["hair", "bangs", "twintails", "pantyhose", "braid", "side_up", "bun"]):
         return "hair"
     elif "eye" in word:
         return "eye"
-    elif any(tag in word for tag in ["skin","horn", "ear", "breasts","wings","tail"]):
+    elif any(tag in word for tag in ["skin", "horn", "ear", "breasts", "wings", "tail"]):
         return "body"
-    elif any(tag in word for tag in ["halo","ornament","bow","headwear","mark","shirt", "sleeves","skirt","apron","dress", "kimono" ,"clothes","thighhighs","pants", "hat","cap","vest","ribbon","scarf","necklace","bell"]):
+    elif any(tag in word for tag in ["halo", "ornament", "bow", "headwear", "mark", "shirt", "sleeves", "skirt", "apron", "dress", "kimono", "maid","clothes", "thighhighs", "pants", "hat", "cap", "vest", "ribbon", "scarf", "necklace", "bell"]):
         return "clothing"
     return "other"
 
@@ -43,8 +43,10 @@ with open(output_file_path, "w", encoding="utf-8") as output_file:
             # 统计单词频率
             word_count = Counter(words)
             # 过滤黑名单并获取前20个高频词
-            top_words = [word.strip() for word, count in word_count.most_common() if word.strip() not in blacklist]
-            top_words = top_words[:20]  # 只保留前20个
+            top_words = [
+                word.strip() for word, count in word_count.most_common()
+                if not any(black in word.strip().lower() for black in blacklist)
+            ][:20]  # 只保留前20个高频词
 
             # 将1girl和1boy放在前面
             prioritized_words = [word for word in top_words if word in ["1girl", "1boy"]]
