@@ -3,9 +3,21 @@ import re
 from collections import Counter
 
 directory = r"F:\data\all\touhou\touhou_146\touhou_145"  # 指定目录路径
-blacklist = ["solo", "looking_at_viewer", "blush", "simple_background", "white_background", "smile", "open_mouth", "commentary_request", "highres"]  # 黑名单列表
+blacklist = ["solo", "looking_at_viewer", "blush", "simple_background", "white_background", "smile", "mouth","holding" ,"request","fruit" ,"food","highres","absurdres"]  # 黑名单列表
 
-output_file_path = r"F:\data\all\touhou\touhou_146\touhou_145\result_1.txt"  # 指定输出结果的txt文件路径
+output_file_path = r"F:\data\all\touhou\touhou_146\touhou_145\result_5.txt"  # 指定输出结果的txt文件路径
+
+# 定义标签分类
+def categorize_word(word):
+    if any(tag in word for tag in ["hair", "bangs", "twintails","pantyhose","braid","side_up","bun"]):
+        return "hair"
+    elif "eye" in word:
+        return "eye"
+    elif any(tag in word for tag in ["skin","horn", "ear", "breasts","wings","tail"]):
+        return "body"
+    elif any(tag in word for tag in ["halo","ornament","bow","headwear","mark","shirt", "sleeves","skirt","apron","dress", "kimono" ,"clothes","thighhighs","pants", "hat","cap","vest","ribbon","scarf","necklace","bell"]):
+        return "clothing"
+    return "other"
 
 # 遍历目录下的文件夹
 with open(output_file_path, "w", encoding="utf-8") as output_file:
@@ -37,9 +49,40 @@ with open(output_file_path, "w", encoding="utf-8") as output_file:
             # 将1girl和1boy放在前面
             prioritized_words = [word for word in top_words if word in ["1girl", "1boy"]]
             other_words = [word for word in top_words if word not in prioritized_words]
-            final_top_words = prioritized_words + other_words
 
-            top_words_str = ", ".join(final_top_words)
+            # 按标签分类
+            categorized_words = {
+                "main": [],
+                "hair": [],
+                "eye": [],
+                "body": [],
+                "clothing": [],
+                "other": []
+            }
+
+            # 先添加频率最高的词
+            if other_words:
+                categorized_words["main"].append(other_words[0])  # 最高频词
+
+            # 添加主体标签
+            for word in other_words[1:]:
+                if "girl" in word or "boy" in word:
+                    categorized_words["main"].append(word)
+                else:
+                    category = categorize_word(word)
+                    categorized_words[category].append(word)
+
+            # 按顺序输出
+            sorted_top_words = (
+                categorized_words["main"] +
+                categorized_words["hair"] +
+                categorized_words["eye"] +
+                categorized_words["body"] +
+                categorized_words["clothing"] +
+                categorized_words["other"]
+            )
+
+            top_words_str = ", ".join(sorted_top_words)
 
             output_file.write("核心触发词:\n")
             output_file.write(top_words_str + "\n\n")
