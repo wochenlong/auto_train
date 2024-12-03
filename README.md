@@ -11,7 +11,7 @@ accelerate launch --dynamo_backend no --dynamo_mode default --mixed_precision fp
 ```
 DB
 ```
-accelerate launch --dynamo_backend no --dynamo_mode default --mixed_precision bf16 --num_processes 1 --num_machines 1 --num_cpu_threads_per_process 2 /root/kohya_ss/sd-scripts/sdxl_train.py --config_file                         /root/config_dreambooth-20241121-191436.toml     
+accelerate launch --dynamo_backend no --dynamo_mode default --mixed_precision bf16 --num_processes 1 --num_machines 1 --num_cpu_threads_per_process 2 /root/kohya_ss/sd-scripts/sdxl_train.py --config_file  /root/config_dreambooth-20241121-191436.toml     
 ```
 # sdeval的使用
 ## 依赖安装
