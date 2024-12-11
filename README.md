@@ -93,3 +93,43 @@ if __name__ == "__main__":
     dst_directory = r'F:\data\all\arknights\v1_86'
     copy_files(src_directory, dst_directory)
 ```
+遍历arrow
+```
+import pyarrow as pa
+import os
+import tqdm
+import glob
+
+arrow_files = glob.glob(r"/data-mnt/data/openpose/*.arrow")
+save_dir = r"/data-mnt/data/models/cmxldata"
+
+save_image_dir = os.path.join(save_dir, 'image_v_0-15')
+save_condition_image_dir = os.path.join(save_dir, 'condition_image')
+os.makedirs(save_image_dir, exist_ok=True)
+os.makedirs(save_condition_image_dir, exist_ok=True)
+
+total_images = 0
+
+for arrow_file in arrow_files:
+    with pa.OSFile(arrow_file, 'rb') as source:
+        with pa.RecordBatchFileReader(source) as reader:
+            table = reader.read_all()
+
+            for i, row in tqdm.tqdm(table.to_pandas().iterrows(), total=len(table)):
+                image = row['image']
+                condition_image = row['condition_image']
+                meta_info = row['meta_info']
+                image_key = 'danbooru_' + str(meta_info['danbooru_pid'])
+                caption = meta_info['caption_base'].replace('|||', '')
+                with open(os.path.join(save_image_dir, image_key + '.png'), 'wb') as f:
+                    f.write(image)
+                with open(os.path.join(save_condition_image_dir, image_key + '.png'), 'wb') as f:
+                    f.write(condition_image)
+                with open(os.path.join(save_image_dir, image_key + '.txt'), 'w') as f:
+                    f.write(caption)
+
+                total_images += 1
+
+print(f"完成，共处理了{total_images}张图片")
+```
+
